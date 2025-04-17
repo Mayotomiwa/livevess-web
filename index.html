@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>QoreID Liveness Check</title>
   <style>
     body {
       margin: 0;
       padding: 0;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f5f5f5;
     }
     #app {
       display: flex;
@@ -21,206 +20,87 @@
     .loading {
       text-align: center;
     }
-    .loading-spinner {
-      border: 4px solid rgba(0, 0, 0, 0.1);
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      border-left-color: #09f;
-      animation: spin 1s ease infinite;
-      margin: 0 auto 20px;
-    }
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
     .error {
-      color: #d32f2f;
+      color: red;
       text-align: center;
       padding: 20px;
     }
   </style>
+  <script src="https://dashboard.qoreid.com/qoreid-sdk/qoreid.js"></script>
 </head>
 <body>
   <div id="app">
-    <!-- Loading state shown initially -->
-    <div class="loading">
-      <div class="loading-spinner"></div>
-      <p>Loading QoreID verification...</p>
-    </div>
+    <div class="loading">Loading...</div>
   </div>
 
   <script>
-    // Log any errors to help debugging
-    window.onerror = function(message, source, lineno, colno, error) {
-      console.error("Error:", message, source, lineno, colno, error);
-      document.getElementById('app').innerHTML = `
-        <div class="error">
-          <p>Error loading verification: ${message}</p>
-          <button onclick="location.reload()">Retry</button>
-        </div>
-      `;
-      
-      // If running in WebView, communicate errors back
-      if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'error',
-          message: message
-        }));
-      }
-      
-      return true;
-    };
-
-    // Get URL parameters
-    function getQueryParam(key) {
-      const params = new URLSearchParams(window.location.search);
-      return params.get(key);
-    }
-
-    // Extract parameters
-    const clientId = getQueryParam("clientId");
-    const productCode = getQueryParam("productCode");
-    const customerReference = getQueryParam("customerReference");
-    let applicantData = {};
-    let identityData = {};
-    
-    try {
-      const appDataParam = getQueryParam("applicantData");
-      if (appDataParam) {
-        applicantData = JSON.parse(decodeURIComponent(appDataParam));
-      }
-      
-      const idDataParam = getQueryParam("identityData");
-      if (idDataParam) {
-        identityData = JSON.parse(decodeURIComponent(idDataParam));
-      }
-    } catch (e) {
-      console.error("Error parsing parameters:", e);
-    }
-
-    // Check if required parameters exist
-    if (!clientId) {
-      document.getElementById('app').innerHTML = `
-        <div class="error">
-          <p>Missing required parameter: clientId</p>
-        </div>
-      `;
-    } else {
-      // Load QoreID script with timeout and error handling
-      const loadScript = () => {
-        return new Promise((resolve, reject) => {
-          const script = document.createElement('script');
-          script.src = "https://dashboard.qoreid.com/qoreid-sdk/qoreid.js";
-          script.async = true;
-          
-          // Set timeout for script loading
-          const timeoutId = setTimeout(() => {
-            reject(new Error("Script loading timed out"));
-          }, 10000);
-          
-          script.onload = () => {
-            clearTimeout(timeoutId);
-            resolve();
-          };
-          
-          script.onerror = () => {
-            clearTimeout(timeoutId);
-            reject(new Error("Failed to load QoreID script"));
-          };
-          
-          document.head.appendChild(script);
-        });
-      };
-
-      // Initialize QoreID button
-      const initQoreID = () => {
+    document.addEventListener('DOMContentLoaded', function() {
+      try {
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get('clientId');
+        const productCode = urlParams.get('productCode');
+        const customerReference = urlParams.get('customerReference');
+        let applicantData = {};
+        let identityData = {};
+        
         try {
-          const button = document.createElement('qoreid-button');
-          button.setAttribute('id', 'QoreIDButton');
-          button.setAttribute('clientId', clientId);
-          if (productCode) button.setAttribute('productCode', productCode);
-          if (customerReference) button.setAttribute('customerReference', customerReference);
-          
-          button.setAttribute('applicantData', JSON.stringify(applicantData));
-          button.setAttribute('identityData', JSON.stringify(identityData));
-          
-          // Clear loading state and add button
-          document.getElementById('app').innerHTML = '';
-          document.getElementById('app').appendChild(button);
-          
-          // Add event listeners if available
-          if (window.QoreID) {
-            window.QoreID.addEventListener('verification-submitted', (event) => {
-              console.log('Verification submitted:', event);
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'verification-submitted',
-                  data: event
-                }));
-              }
-            });
-            
-            window.QoreID.addEventListener('verification-error', (event) => {
-              console.error('Verification error:', event);
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'verification-error',
-                  data: event
-                }));
-              }
-            });
-            
-            window.QoreID.addEventListener('close', (event) => {
-              console.log('Verification closed:', event);
-              if (window.ReactNativeWebView) {
-                window.ReactNativeWebView.postMessage(JSON.stringify({
-                  type: 'verification-closed',
-                  data: event
-                }));
-              }
-            });
+          if (urlParams.get('applicantData')) {
+            applicantData = JSON.parse(decodeURIComponent(urlParams.get('applicantData')));
+          }
+          if (urlParams.get('identityData')) {
+            identityData = JSON.parse(decodeURIComponent(urlParams.get('identityData')));
           }
         } catch (e) {
-          console.error("Error initializing QoreID:", e);
-          document.getElementById('app').innerHTML = `
-            <div class="error">
-              <p>Error initializing QoreID: ${e.message}</p>
-              <button onclick="location.reload()">Retry</button>
-            </div>
-          `;
+          console.error("Failed to parse data parameters:", e);
         }
-      };
-
-      // Load script with retry mechanism
-      const loadWithRetry = async (retries = 3) => {
-        try {
-          await loadScript();
-          initQoreID();
-        } catch (error) {
-          console.error(`Loading failed, retries left: ${retries}`, error);
-          if (retries > 0) {
-            document.getElementById('app').innerHTML = `
-              <div class="loading">
-                <div class="loading-spinner"></div>
-                <p>Connection issue. Retrying (${retries} attempts left)...</p>
-              </div>
-            `;
-            setTimeout(() => loadWithRetry(retries - 1), 2000);
-          } else {
-            document.getElementById('app').innerHTML = `
-              <div class="error">
-                <p>Failed to load QoreID verification after multiple attempts.</p>
-                <button onclick="location.reload()">Try Again</button>
-              </div>
-            `;
-          }
+        
+        // Create the HTML for the QoreID button directly
+        const appDiv = document.getElementById('app');
+        appDiv.innerHTML = `
+          <qoreid-button
+            id="QoreIDButton"
+            clientId="${clientId || ''}"
+            productCode="${productCode || ''}"
+            customerReference="${customerReference || ''}"
+            applicantData='${JSON.stringify(applicantData)}'
+            identityData='${JSON.stringify(identityData)}'>
+          </qoreid-button>
+        `;
+        
+        // Add event listeners for communication with React Native
+        if (window.QoreID && window.ReactNativeWebView) {
+          window.QoreID.addEventListener('verification-submitted', function(event) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'verification-submitted',
+              data: event
+            }));
+          });
+          
+          window.QoreID.addEventListener('verification-error', function(event) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'verification-error',
+              data: event
+            }));
+          });
+          
+          window.QoreID.addEventListener('close', function(event) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'verification-closed',
+              data: event
+            }));
+          });
         }
-      };
-
-      // Start loading the script
-      loadWithRetry();
-    }
+      } catch (error) {
+        console.error("Initialization error:", error);
+        document.getElementById('app').innerHTML = `
+          <div class="error">
+            <p>Error initializing QoreID: ${error.message}</p>
+            <button onclick="location.reload()">Retry</button>
+          </div>
+        `;
+      }
+    });
   </script>
 </body>
 </html>
