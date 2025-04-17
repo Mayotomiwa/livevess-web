@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QoreID Liveness Check</title>
+</head>
+<body>
+  <div id="app"></div>
+
+  <script>
+    function getQueryParam(key) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(key);
+    }
+
+    const clientId = getQueryParam("clientId");
+    const productCode = getQueryParam("productCode");
+    const customerReference = getQueryParam("customerReference");
+    const applicantData = JSON.parse(decodeURIComponent(getQueryParam("applicantData") || "{}"));
+    const identityData = JSON.parse(decodeURIComponent(getQueryParam("identityData") || "{}"));
+
+    const script = document.createElement('script');
+    script.src = "https://dashboard.qoreid.com/qoreid-sdk/qoreid.js";
+    script.async = true;
+
+    script.onload = () => {
+      const button = document.createElement('qoreid-button');
+      button.setAttribute('id', 'QoreIDButton');
+      if (clientId) button.setAttribute('clientId', clientId);
+      if (productCode) button.setAttribute('productCode', productCode);
+      if (customerReference) button.setAttribute('customerReference', customerReference);
+      button.setAttribute('applicantData', JSON.stringify(applicantData));
+      button.setAttribute('identityData', JSON.stringify(identityData));
+      document.getElementById('app').appendChild(button);
+    };
+
+    document.head.appendChild(script);
+  </script>
+</body>
+</html>
